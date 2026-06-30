@@ -1,0 +1,49 @@
+# Environment and local configuration
+.env
+.venv/
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Test, lint, and type-checker caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# IDE and OS metadata
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Dataset and generated artifacts
+data/raw/**
+data/interim/**
+data/processed/**
+artifacts/embeddings/**
+results/**
+logs/
+*.log
+
+# Model caches and reports
+.cache/
+models/
+reports/
+tmp/
+temp/
+
+# Keep repository placeholders
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+!artifacts/embeddings/.gitkeep
+!results/.gitkeep

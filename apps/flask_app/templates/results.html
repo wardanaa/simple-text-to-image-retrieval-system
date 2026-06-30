@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="results-header">
+  <h1>Results for "{{ query }}"</h1>
+  <p>Showing up to {{ top_k }} ranked images. Similarity scores are ranking signals, not probabilities.</p>
+  <a href="{{ url_for('retrieval.index') }}">New search</a>
+</section>
+
+{% if results %}
+<section class="results-grid">
+  {% for item in results %}
+  <article class="result-card">
+    <img src="{{ item.image_url }}" alt="{{ item.product_name }}">
+    <div class="result-copy">
+      <span class="rank">#{{ item.rank }}</span>
+      <h2>{{ item.product_name or item.image_id }}</h2>
+      <p>{{ item.category }}</p>
+      <strong>{{ "%.4f"|format(item.score) }}</strong>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% else %}
+<p class="empty">No matching images were returned for this query.</p>
+{% endif %}
+{% endblock %}

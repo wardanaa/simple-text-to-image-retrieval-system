@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="intro">
+  <h1>Search product images with natural language</h1>
+  <p>Type a product description. CLIP encodes the query, compares it with stored product image embeddings, and returns the nearest images by cosine similarity.</p>
+</section>
+
+<form class="search-form" method="post" action="{{ url_for('retrieval.search') }}">
+  <label for="query">Query</label>
+  <input id="query" name="query" type="text" value="{{ query or '' }}" placeholder="black running shoes" maxlength="200" required>
+
+  <label for="top_k">Results</label>
+  <input id="top_k" name="top_k" type="number" min="1" max="{{ maximum_top_k }}" value="{{ default_top_k }}">
+
+  {% if error %}
+  <p class="error" role="alert">{{ error }}</p>
+  {% endif %}
+
+  <button type="submit">Search</button>
+</form>
+
+<p class="example">Example query: <span>black running shoes</span></p>
+{% endblock %}

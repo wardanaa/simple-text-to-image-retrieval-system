@@ -1,0 +1,26 @@
+project:
+  name: text-to-image-retrieval
+
+model:
+  identifier: openai/clip-vit-base-patch32
+  device: cpu
+
+dataset:
+  category: shoes
+  max_images: 500
+  random_seed: 42
+  raw_directory: data/raw
+  processed_metadata_path: data/processed/metadata.csv
+
+embedding:
+  batch_size: 16
+  output_directory: artifacts/embeddings
+
+retrieval:
+  default_top_k: 5
+  maximum_top_k: 20
+
+flask:
+  host: 127.0.0.1
+  port: 5000
+  debug: false
