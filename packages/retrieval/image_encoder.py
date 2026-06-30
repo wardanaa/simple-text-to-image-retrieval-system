@@ -3,11 +3,43 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from packages.retrieval.model_loader import ClipResources
 from packages.retrieval.preprocessing import normalize_embeddings, prepare_image_inputs
+
+if TYPE_CHECKING:
+    import torch
+
+
+def _extract_image_features(output: Any) -> torch.Tensor:
+    """Extract projected image features across Transformers API versions."""
+
+    import torch
+
+    # Older Transformers versions return the projected features directly.
+    if isinstance(output, torch.Tensor):
+        return output
+
+    # Projection-specific model outputs expose the tensor as image_embeds.
+    image_embeds = getattr(output, "image_embeds", None)
+    if isinstance(image_embeds, torch.Tensor):
+        return image_embeds
+
+    # Newer CLIPModel.get_image_features() returns BaseModelOutputWithPooling
+    # and stores the projected image features in pooler_output.
+    pooler_output = getattr(output, "pooler_output", None)
+    if isinstance(pooler_output, torch.Tensor):
+        return pooler_output
+
+    raise TypeError(
+        "Unsupported CLIP image feature output: "
+        f"{type(output).__module__}.{type(output).__name__}. "
+        "Expected a torch.Tensor or an output containing image_embeds "
+        "or pooler_output."
+    )
 
 
 class ImageEncoder:
@@ -26,7 +58,17 @@ class ImageEncoder:
 
         import torch
 
-        inputs = prepare_image_inputs(image_paths, self.resources.processor, self.resources.device)
+        if not image_paths:
+            raise ValueError("image_paths must not be empty.")
+
+        inputs = prepare_image_inputs(
+            image_paths,
+            self.resources.processor,
+            self.resources.device,
+        )
         with torch.inference_mode():
-            features = self.resources.model.get_image_features(**inputs)
-        return normalize_embeddings(features.detach().cpu().numpy())
+            output = self.resources.model.get_image_features(**inputs)
+            features = _extract_image_features(output)
+
+        embeddings = features.detach().cpu().numpy().astype(np.float32, copy=False)
+        return normalize_embeddings(embeddings).astype(np.float32, copy=False)
