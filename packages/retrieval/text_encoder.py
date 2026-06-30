@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from packages.retrieval.exceptions import QueryValidationError
 from packages.retrieval.model_loader import ClipResources
 from packages.retrieval.preprocessing import normalize_embeddings
+
+if TYPE_CHECKING:
+    import torch
 
 
 def validate_query(query: str, max_length: int = 200) -> str:
@@ -20,6 +24,32 @@ def validate_query(query: str, max_length: int = 200) -> str:
     if len(normalized) > max_length:
         raise QueryValidationError(f"Search query must be {max_length} characters or fewer.")
     return normalized
+
+
+def _extract_text_features(output: Any) -> "torch.Tensor":
+    """Extract projected CLIP text features across Transformers versions."""
+
+    import torch
+
+    # Older Transformers versions return the projected features directly.
+    if isinstance(output, torch.Tensor):
+        return output
+
+    # Projection-model outputs may expose the embedding explicitly.
+    text_embeds = getattr(output, "text_embeds", None)
+    if isinstance(text_embeds, torch.Tensor):
+        return text_embeds
+
+    # Newer CLIPModel.get_text_features() versions wrap projected features
+    # in BaseModelOutputWithPooling.pooler_output.
+    pooler_output = getattr(output, "pooler_output", None)
+    if isinstance(pooler_output, torch.Tensor):
+        return pooler_output
+
+    raise TypeError(
+        "Unsupported CLIP text feature output: "
+        f"{type(output).__module__}.{type(output).__name__}"
+    )
 
 
 class TextEncoder:
@@ -38,6 +68,9 @@ class TextEncoder:
 
         import torch
 
+        if not queries:
+            raise ValueError("queries must not be empty.")
+
         normalized_queries = [validate_query(query) for query in queries]
         inputs = self.resources.processor(
             text=normalized_queries,
@@ -49,6 +82,10 @@ class TextEncoder:
             key: value.to(self.resources.device) if hasattr(value, "to") else value
             for key, value in inputs.items()
         }
+
         with torch.inference_mode():
-            features = self.resources.model.get_text_features(**inputs)
-        return normalize_embeddings(features.detach().cpu().numpy())
+            output = self.resources.model.get_text_features(**inputs)
+            features = _extract_text_features(output)
+
+        embeddings = normalize_embeddings(features.detach().cpu().numpy())
+        return embeddings.astype(np.float32, copy=False)
